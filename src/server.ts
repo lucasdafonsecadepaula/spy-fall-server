@@ -43,6 +43,11 @@ const io = new Server(server, {
   },
 })
 
+// eslint-disable-next-line no-use-before-define
+type GameProps = Game
+
+const cache = new Map() as Map<string, GameProps>
+
 const PORT = process.env.PORT || 8000
 
 const PLACES = [
@@ -402,6 +407,7 @@ class Game {
     howMuchSpys: 1 | 2
   }
 
+  whoQuit: string[]
   currentInterval: NodeJS.Timer | null
   currentTimer: number
 
@@ -415,6 +421,7 @@ class Game {
       timerInS: 60 * 10, // 5 min
       howMuchSpys: 1,
     }
+    this.whoQuit = []
     this.currentInterval = null
     this.currentTimer = 0
   }
@@ -454,6 +461,12 @@ class Game {
         roomId: this.id,
         name,
       })
+
+      const already = this.whoQuit.some((e) => e === sessionId)
+      if (already) {
+        this.whoQuit = this.whoQuit.filter((e) => e !== sessionId)
+      }
+
       this.sendStatus()
       io.to(sessionId).emit('card', userData.card)
       return
@@ -487,6 +500,28 @@ class Game {
     })
 
     this.sendStatus()
+  }
+
+  leave({
+    socket,
+    sessionId,
+  }: {
+    name: string
+    socket: Socket
+    sessionId?: string
+  }) {
+    socket.leave(this.id)
+    if (!sessionId) return
+
+    socket.leave(sessionId)
+    const already = this.whoQuit.some((e) => e === sessionId)
+    if (!already) {
+      this.whoQuit.push(sessionId)
+    }
+
+    if (this.whoQuit.length === this.users.size) {
+      cache.delete(this.id)
+    }
   }
 
   getStatus() {
@@ -618,8 +653,6 @@ class Game {
   }
 }
 
-const cache = new Map() as Map<string, Game>
-
 io.on('connection', (socket) => {
   socket.on('create-room', ({ name }: { name: string }) => {
     const game = new Game()
@@ -696,6 +729,30 @@ io.on('connection', (socket) => {
     }
 
     game.nextRound()
+  })
+
+  socket.on('reset', () => {
+    const { name, roomId, sessionId } = socket.data
+    const game = cache.get(roomId)
+
+    if (!game || !name || !roomId || !sessionId) {
+      socket.emit('reset')
+      return
+    }
+
+    game.leave({ name, socket, sessionId })
+  })
+
+  socket.on('disconnect', () => {
+    const { name, roomId, sessionId } = socket.data
+    const game = cache.get(roomId)
+
+    if (!game || !name || !roomId || !sessionId) {
+      socket.emit('reset')
+      return
+    }
+
+    game.leave({ name, socket, sessionId })
   })
 })
 
