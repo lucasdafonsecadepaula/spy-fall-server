@@ -635,6 +635,7 @@ io.on('connection', (socket) => {
 
   socket.on('join-room', ({ name, roomId, sessionId }) => {
     const game = cache.get(roomId)
+    console.log('join-room', game?.id)
     if (!game || !name || !roomId) {
       socket.emit('reset')
       return
