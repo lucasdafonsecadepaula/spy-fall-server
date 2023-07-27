@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsup src"
+    "build": "npm i; tsup src"
   },
   "keywords": [],
   "author": "",
