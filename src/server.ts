@@ -731,29 +731,17 @@ io.on('connection', (socket) => {
     game.nextRound()
   })
 
-  socket.on('reset', () => {
-    const { name, roomId, sessionId } = socket.data
-    const game = cache.get(roomId)
+  // socket.on('disconnect', () => {
+  //   const { name, roomId, sessionId } = socket.data
+  //   const game = cache.get(roomId)
 
-    if (!game || !name || !roomId || !sessionId) {
-      socket.emit('reset')
-      return
-    }
+  //   if (!game || !name || !roomId || !sessionId) {
+  //     socket.emit('reset')
+  //     return
+  //   }
 
-    game.leave({ name, socket, sessionId })
-  })
-
-  socket.on('disconnect', () => {
-    const { name, roomId, sessionId } = socket.data
-    const game = cache.get(roomId)
-
-    if (!game || !name || !roomId || !sessionId) {
-      socket.emit('reset')
-      return
-    }
-
-    game.leave({ name, socket, sessionId })
-  })
+  //   game.leave({ name, socket, sessionId })
+  // })
 })
 
 server.listen(PORT, () => {
