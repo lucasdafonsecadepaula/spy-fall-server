@@ -409,6 +409,7 @@ class Game {
 
   currentInterval: NodeJS.Timer | null
   currentTimer: number
+  whoQuit: string[]
 
   constructor() {
     this.id = v4()
@@ -422,6 +423,7 @@ class Game {
     }
     this.currentInterval = null
     this.currentTimer = 0
+    this.whoQuit = []
   }
 
   sendStatus() {
@@ -493,6 +495,18 @@ class Game {
     })
 
     this.sendStatus()
+  }
+
+  leave({ sessionId }: { socket: Socket; sessionId?: string }) {
+    if (!sessionId) return
+    const already = this.whoQuit.some((e) => e === sessionId)
+    if (!already) {
+      this.whoQuit.push(sessionId)
+    }
+
+    if (this.whoQuit.length === this.users.size) {
+      cache.delete(this.id)
+    }
   }
 
   getStatus() {
@@ -635,7 +649,10 @@ io.on('connection', (socket) => {
 
   socket.on('join-room', ({ name, roomId, sessionId }) => {
     const game = cache.get(roomId)
-    console.log('join-room', game?.id)
+    console.log(
+      'cache',
+      [...cache].map((e) => e[0]),
+    )
     if (!game || !name || !roomId) {
       socket.emit('reset')
       return
@@ -701,6 +718,18 @@ io.on('connection', (socket) => {
     }
 
     game.nextRound()
+  })
+
+  socket.on('disconnect', () => {
+    const { name, roomId, sessionId } = socket.data
+    const game = cache.get(roomId)
+
+    if (!game || !name || !roomId || !sessionId) {
+      socket.emit('reset')
+      return
+    }
+
+    game.leave({ socket, sessionId })
   })
 })
 
